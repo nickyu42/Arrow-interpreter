@@ -3,7 +3,7 @@ module Interp where
 
 import Prelude hiding (lookup, fail)
 
-import Data.Map as M
+import qualified Data.Map as M
 import Control.Arrow
 import Control.Category
 
@@ -14,7 +14,7 @@ import Control.Category
 --     (***) :: a b c -> a b' c' -> a (b, b') (c, c')
 --     (&&&) :: a b c -> a b c' -> a b (c, c')
 
-data Exp
+data Expr
     = Var String
     -- | Add Exp Exp
 
@@ -37,13 +37,26 @@ instance Arrow A where
         (Left err, env') -> (Left err, env')
         (Right c, env') -> (Right (c, d), env')
 
+instance ArrowChoice A where
+    left (A f) = A $ \env e -> case e of
+        Left b -> case f env b of
+            (Left err, env') -> (Left err, env')
+            (Right c, env') -> (Right (Left c), env')
+        Right d -> (Right (Right d), env)
+
 lookup :: (Ord k, Show k) => A (k, M.Map k a) a
 lookup = proc (k, map) -> case M.lookup k map of
-    Nothing -> fail -< "Variable " ++ k ++ " does not exist"
+    Nothing -> fail -< "Variable not bound"
     Just v -> returnA -< v
 
--- eval :: Exp -> A Env (Maybe Val)
--- eval (Var s) = arr (lookup' s)
-
 fail :: A String a
-fail = \env err -> (Left err, env)
+fail = A $ \env err -> (Left err, env)
+
+getEnv :: A () Env
+getEnv = A $ \env _ -> (Right env, env)
+
+eval :: A Expr Val
+eval = proc e -> case e of
+    Var s -> do
+        env <- getEnv -< ()
+        lookup -< (s, env)

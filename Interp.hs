@@ -1,4 +1,5 @@
 {-# LANGUAGE Arrows #-}
+{-# OPTIONS_GHC -Wall #-}
 module Interp where
 
 import Prelude hiding (lookup, fail)
@@ -7,23 +8,30 @@ import qualified Data.Map as M
 import Control.Arrow
 import Control.Category
 
--- class Control.Category.Category a => Arrow (a :: * -> * -> *) where
---     arr :: (b -> c) -> a b c
---     first :: a b c -> a (b, d) (c, d)
---     second :: a b c -> a (d, b) (d, c)
---     (***) :: a b c -> a b' c' -> a (b, b') (c, c')
---     (&&&) :: a b c -> a b c' -> a b (c, c')
-
 data Expr
-    = Var String
-    -- | Add Exp Exp
+    = Lit Int
+    | Var String
+    | Add Expr Expr
+    deriving (Show, Eq)
+    -- | Sub Expr Exp
 
 data Val
     = Num Int
+    deriving (Show, Eq)
+
+data Command
+    = Skip
+    | Declare String Expr Command
+    | Print Expr
+    | Assign String Expr
+    | Seq Command Command
+    deriving (Show, Eq)
+    -- | While Expr Command
+    -- | If Expr Command Command
 
 type Env = M.Map String Val
 
-data A b c = A (Env -> b -> (Either String c, Env))
+newtype A b c = A { unpack :: (Env -> b -> (Either String c, Env)) }
 
 instance Category A where
     id = A (\env b -> (Right b, env))
@@ -44,10 +52,13 @@ instance ArrowChoice A where
             (Right c, env') -> (Right (Left c), env')
         Right d -> (Right (Right d), env)
 
-lookup :: (Ord k, Show k) => A (k, M.Map k a) a
-lookup = proc (k, map) -> case M.lookup k map of
-    Nothing -> fail -< "Variable not bound"
-    Just v -> returnA -< v
+insert :: A (String, Val) ()
+insert = A $ \env (k, val) -> (Right (), M.insert k val env)
+
+lookup :: A String Val
+lookup = A $ \env k -> case M.lookup k env of
+    Nothing -> (Left "Variable not bound", env)
+    Just v -> (Right v, env)
 
 fail :: A String a
 fail = A $ \env err -> (Left err, env)
@@ -55,8 +66,47 @@ fail = A $ \env err -> (Left err, env)
 getEnv :: A () Env
 getEnv = A $ \env _ -> (Right env, env)
 
+add :: A (Val, Val) Val
+add = proc e -> case e of
+    (Num x, Num y) -> do 
+        returnA -< Num (x + y)
+
+skip :: A () String
+skip = A $ \env _ -> (Right "", env)
+
 eval :: A Expr Val
 eval = proc e -> case e of
+    Lit x -> returnA -< Num x
     Var s -> do
-        env <- getEnv -< ()
-        lookup -< (s, env)
+        lookup -< s
+    Add e1 e2 -> do
+        v1 <- eval -< e1
+        v2 <- eval -< e2
+        case (v1, v2) of
+            (Num x, Num y) -> returnA -< Num (x + y)
+
+run :: A Command String
+run = proc c -> case c of
+    Skip -> do
+        skip -< ()
+    Declare s e c' -> do
+        val <- eval -< e
+        insert -< (s, val)
+        run -< c'
+    Print e -> do
+        val <- eval -< e
+        returnA -< (show val) ++ "\n"
+    Assign s e -> do
+        val <- eval -< e
+        lookup -< s -- guard
+        insert -< (s, val)
+        skip -< ()
+    Seq c1 c2 -> do
+        s1 <- run -< c1
+        s2 <- run -< c2
+        returnA -< s1 ++ s2
+
+exec :: (Show c) => Env -> A b c -> b -> IO ()
+exec env a b = case unpack a env b of
+    (Right c, _) -> putStrLn $ show c
+    (Left err, env') -> putStrLn $ err ++ "\n" ++ show env'

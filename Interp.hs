@@ -7,27 +7,18 @@ import Prelude hiding (lookup, fail)
 import qualified Data.Map as M
 import Control.Arrow
 import Control.Category
+import Debug.Trace
 
-data Expr
-    = Lit Int
-    | Var String
-    | Add Expr Expr
-    deriving (Show, Eq)
-    -- | Sub Expr Exp
+import Syntax
 
 data Val
     = Num Int
-    deriving (Show, Eq)
+    | Bl Bool
+    deriving (Eq)
 
-data Command
-    = Skip
-    | Declare String Expr Command
-    | Print Expr
-    | Assign String Expr
-    | Seq Command Command
-    deriving (Show, Eq)
-    -- | While Expr Command
-    -- | If Expr Command Command
+instance Show Val where
+    show (Num x) = show x
+    show (Bl x) = show x
 
 type Env = M.Map String Val
 
@@ -66,24 +57,56 @@ fail = A $ \env err -> (Left err, env)
 getEnv :: A () Env
 getEnv = A $ \env _ -> (Right env, env)
 
-add :: A (Val, Val) Val
-add = proc e -> case e of
-    (Num x, Num y) -> do 
-        returnA -< Num (x + y)
-
 skip :: A () String
 skip = A $ \env _ -> (Right "", env)
+
+appN :: (Int -> Int -> Int) -> A (Expr, Expr) Val
+appN f = proc p -> do
+    v <- (eval *** eval) -< p
+    case v of
+        (Num x, Num y) -> returnA -< Num (x `f` y)
+        _ -> fail -< "Cannot apply on non-numbers"
+
+-- appB :: (Bool -> Bool -> Bool) -> A (Expr, Expr) Bool
+-- appB f = proc p -> do
+--     v <- (eval *** eval) -< p
+--     case v of
+--         (Bl x, Bl y) -> returnA -< x `f` y
+--         _ -> fail -< "Cannot apply on non-booleans" 
 
 eval :: A Expr Val
 eval = proc e -> case e of
     Lit x -> returnA -< Num x
-    Var s -> do
-        lookup -< s
-    Add e1 e2 -> do
-        v1 <- eval -< e1
-        v2 <- eval -< e2
-        case (v1, v2) of
-            (Num x, Num y) -> returnA -< Num (x + y)
+    Var s -> lookup -< s
+    Add e1 e2 -> appN (+) -< (e1, e2)
+    Sub e1 e2 -> appN (-) -< (e1, e2)
+    Mult e1 e2 -> appN (*) -< (e1, e2)
+    Div e1 e2 -> appN div -< (e1, e2)
+    Rem e1 e2 -> appN rem -< (e1, e2)
+
+evalB :: A Boolean Bool
+evalB = proc e -> case e of
+    Boolean b -> returnA -< b
+    Equal e1 e2 -> do
+        v <- (eval *** eval) -< (e1, e2)
+        case v of 
+            (Num x, Num y) -> returnA -< x == y
+            _ -> fail -< "Cannot apply on non-numbers"
+    Less e1 e2 -> do
+        v <- (eval *** eval) -< (e1, e2)
+        case v of 
+            (Num x, Num y) -> returnA -< x < y
+            _ -> fail -< "Cannot apply on non-numbers"
+    And e1 e2 -> do
+        (x, y) <- (evalB *** evalB) -< (e1, e2)
+        returnA -< x && y
+    Or e1 e2 -> do
+        (x, y) <- (evalB *** evalB) -< (e1, e2)
+        returnA -< x || y
+    Not e' -> do
+        v <- evalB -< e'
+        returnA -< not v
+        
 
 run :: A Command String
 run = proc c -> case c of
@@ -105,8 +128,19 @@ run = proc c -> case c of
         s1 <- run -< c1
         s2 <- run -< c2
         returnA -< s1 ++ s2
+    w @ (While x c') -> do
+        run -< If x (Seq c' w) Skip
+    If x c1 c2 -> do
+        cond <- evalB -< x
+        if cond
+            then run -< c1
+            else run -< c2
+    Trace e c' -> do
+        v <- eval -< e
+        let _ = trace $ "[debug]" ++ show v
+        run -< c'
 
 exec :: (Show c) => Env -> A b c -> b -> IO ()
 exec env a b = case unpack a env b of
     (Right c, _) -> putStrLn $ show c
-    (Left err, env') -> putStrLn $ err ++ "\n" ++ show env'
+    (Left err, env') -> putStr $ err ++ "\n" ++ show env'

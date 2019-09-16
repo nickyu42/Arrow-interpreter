@@ -4,4 +4,4 @@ Interpreter for the comm language
 
 To run
 - clone the repo
-- exec `cabal run`
+- exec `stack run` to build and run example program

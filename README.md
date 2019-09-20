@@ -1,4 +1,4 @@
-# Arrow-interpreter
+# Comm-terp
 
 Interpreter for the comm language
 

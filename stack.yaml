@@ -1,7 +1,8 @@
 resolver: lts-14.6
 
 packages:
-- comm-terp
+- 'comm-terp'
+# - sturdy-lib
 
 extra-deps:
 - monadLib-3.9

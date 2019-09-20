@@ -1,0 +1,60 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 3241d1e980ed29481b9165d55413495c0ad8b099a4607cf7fc8de77a8f0cb59e
+
+name:           comm-terp
+version:        0.2.0.0
+category:       Language
+maintainer:     Nick Yu <nickyu42@gmail.com>
+license:        MIT
+build-type:     Simple
+
+library
+  exposed-modules:
+      Interp
+      Main
+      Syntax
+  other-modules:
+      Paths_comm_terp
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      base
+    , containers
+  default-language: Haskell2010
+
+executable comm-terp
+  main-is: Main.hs
+  other-modules:
+      Interp
+      Syntax
+      Paths_comm_terp
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , comm-terp
+    , containers
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      InterpSpec
+      Paths_comm_terp
+  hs-source-dirs:
+      test
+  ghc-options: -Wall
+  build-depends:
+      base
+    , comm-terp
+    , containers
+    , hspec
+  default-language: Haskell2010

@@ -1,0 +1,38 @@
+name:                comm-terp
+version:             0.2.0.0
+license:             MIT
+maintainer:          Nick Yu <nickyu42@gmail.com>
+category:            Language
+
+dependencies:
+  - base
+  - containers
+
+executables:
+  comm-terp:
+    main:                Main.hs
+    source-dirs:         src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - comm-terp
+
+library:
+  ghc-options: -Wall
+  source-dirs:
+    - src
+
+tests:
+  spec:
+    main: Spec.hs
+
+    source-dirs:
+      - test
+
+    ghc-options: -Wall
+
+    dependencies:
+      - hspec
+      - comm-terp

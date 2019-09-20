@@ -133,6 +133,9 @@ run = proc c -> case c of
         let _ = trace $ "[debug]" ++ show v
         run -< c'
 
+exec' :: Env -> A b c -> b -> (Either String c, Env)
+exec' env a b = unpack a env b
+
 exec :: (Show c) => Env -> A b c -> b -> IO ()
 exec env a b = case unpack a env b of
     (Right c, _) -> putStrLn $ show c

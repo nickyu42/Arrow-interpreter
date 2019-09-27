@@ -1,0 +1,46 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: cb0be24fa34a32ce3f3a0d404ab3ccc265c2dfa4b72e55adedf6565839d2ec92
+
+name:           comm-sturdy
+version:        0.1.0.0
+category:       Language
+maintainer:     Nick Yu <nickyu42@gmail.com>
+license:        MIT
+build-type:     Simple
+
+library
+  exposed-modules:
+      GenericInterpreter
+      SyntaxSturdy
+  other-modules:
+      Paths_comm_sturdy
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      base
+    , comm-terp
+    , containers
+    , sturdy-lib
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_comm_sturdy
+  hs-source-dirs:
+      test
+  ghc-options: -Wall
+  build-depends:
+      base
+    , comm-terp
+    , containers
+    , hspec
+    , sturdy-lib
+  default-language: Haskell2010

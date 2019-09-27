@@ -1,0 +1,29 @@
+name:                comm-sturdy
+version:             0.1.0.0
+license:             MIT
+maintainer:          Nick Yu <nickyu42@gmail.com>
+category:            Language
+
+dependencies:
+  - base
+  - containers
+  - comm-terp
+  - sturdy-lib
+
+library:
+  ghc-options: -Wall
+  source-dirs:
+    - src
+
+tests:
+  spec:
+    main: Spec.hs
+
+    source-dirs:
+      - test
+
+    ghc-options: -Wall
+
+    dependencies:
+      - hspec
+      - comm-terp
